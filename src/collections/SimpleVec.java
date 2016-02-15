@@ -158,7 +158,7 @@ public class SimpleVec<T> implements IVec<T> {
     
     @Override
     public void sort(Comparator<T> comparator) {
-        Arrays.sort(vec, comparator);
+        Arrays.sort(vec, 0, numElements, comparator);
     }
     
     /*

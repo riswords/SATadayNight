@@ -40,8 +40,8 @@ public class SimpleQueue<T> implements IQueue<T> {
     }
     
     private void shiftQueue() {
-        // System.out.println("SHIFT"); // poor man's check that this is being called
-        for(int i=0; i<queue.size(); ++i) {
+        //System.out.println("SHIFT"); // poor man's check that this is being called
+        for(int i=0; i<size(); ++i) {
             queue.set(i, queue.get(endIndex + i));
         }
         queue.shrinkBy(endIndex);
