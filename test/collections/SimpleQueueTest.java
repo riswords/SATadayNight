@@ -47,11 +47,14 @@ public class SimpleQueueTest {
     
     /**
      * Create a queue with waste tolerance of 2.
-     * Insert 5 items into the queue, dequeue 3 items, insert 1 more to trigger shift.
+     * Insert 5 items into the queue, dequeue 2 items, insert 1 more to trigger shift.
      * Check that:
-     *      size is 3
-     *      dequeueing last 3 items results in items 4-6
-     *      
+     *      size is 4
+     *      dequeueing last 4 items results in items 3-6
+     * 
+     * Test uses extra items to be sure that if we shift left  when there are more items in the queue than the 
+     * tolerance, we don't lose any of them, get exceptions, etc.
+     * 
      * TODO: to test reliably, should probably ensure that shiftQueue is actually called, but this requires use of a 
      * mocking/spying framework.
      */
@@ -71,10 +74,10 @@ public class SimpleQueueTest {
         assertEquals("b", queue.dequeue());
         assertEquals(3, queue.size());
         
-        assertEquals("c", queue.dequeue());
-        assertEquals(2, queue.size());
-        
         queue.insert("f");  // should trigger shift
+        assertEquals(4, queue.size());
+        
+        assertEquals("c", queue.dequeue());
         assertEquals(3, queue.size());
         
         assertEquals("d", queue.dequeue());
