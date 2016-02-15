@@ -7,9 +7,14 @@ import solver.solverTypes.Literal;
 public interface ISolver {
 
     /**
-     * Introduce a new variable
+     * Introduce a new variable. Returns the ID of the new variable.
      */
     public int newVariable();
+    
+    /**
+     * Introduce {@code numVars} new variables. Returns the ID of the last variable introduced.
+     */
+    public int newVariable(int numVars);
 
     /**
      * Introduce new clauses. May detect some conflicts and return false. If this happens, the 

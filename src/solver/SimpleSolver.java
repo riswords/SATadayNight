@@ -50,16 +50,23 @@ public class SimpleSolver implements ISolver {
 
     @Override
     public int newVariable() {
-        int index = numVars();
-        watches.push(new SimpleVec<IConstraint<SimpleSolver>>());
-        watches.push(new SimpleVec<IConstraint<SimpleSolver>>());
-        undos.push(new SimpleVec<IConstraint<SimpleSolver>>());
-        reason.push(null);
-        assigns.push(LBool.UNDEFINED);
-        level.push(-1);
-        activity.push(0);
-        variableOrder.newVar();
-        return index;
+        return newVariable(1);
+    }
+    
+    @Override
+    public int newVariable(int newVars) {
+        int newIndex = numVars() + newVars;
+        for(int i=0; i<newVars; ++i) {
+            watches.push(new SimpleVec<IConstraint<SimpleSolver>>());
+            watches.push(new SimpleVec<IConstraint<SimpleSolver>>());
+            undos.push(new SimpleVec<IConstraint<SimpleSolver>>());
+            variableOrder.newVar();
+        }
+        reason.growTo(newIndex, null);
+        assigns.growTo(newIndex, LBool.UNDEFINED);
+        level.growTo(newIndex, -1);
+        activity.growTo(newIndex, 0);
+        return newIndex;
     }
 
     /**
@@ -324,9 +331,9 @@ public class SimpleSolver implements ISolver {
      *      will undo part of the trail, but not beyond the last decision level
      */
     private int analyze(IConstraint<SimpleSolver> conflict, IVec<Literal> outLearnt) {
-        assert(outLearnt.size() == 0) :
+        assert (outLearnt.size() == 0) :
             "Pre-condition failure in analyze: outLearnt input should be cleared.";
-        assert(decisionLevel() > rootLevel) :
+        assert (decisionLevel() > rootLevel) :
             "Pre-condition failure in analyze: current decision level must be greater than root level.";
         
         BoolVec seen = new BoolVec(numVars(), false);
