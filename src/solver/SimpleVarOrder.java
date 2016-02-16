@@ -1,22 +1,29 @@
-package solver.solverTypes;
+package solver;
 
 import collections.DoubleVec;
 import collections.IVec;
 import collections.IntVec;
-import solver.IVarOrder;
+import solver.solverTypes.LBool;
+import solver.solverTypes.Literal;
 
 public class SimpleVarOrder implements IVarOrder {
 
     private IVec<LBool> assignments;
-    private DoubleVec activity;
+    
+    // variable activity
+    private DoubleVec activity; // heuristic measure of the activity of a variable
+    private double varActivityIncrement; // variable activity increment
+    private double varActivityDecay; // decay factor for variable activity
     
     // list of unassigned variables in ascending order of activity
     private IntVec sortedUnassigned;
     private int lastVarID;
     
-    public SimpleVarOrder(IVec<LBool> assignments, DoubleVec activity) {
+    public SimpleVarOrder(IVec<LBool> assignments, double activityDecayFactor) {
         this.assignments = assignments;
-        this.activity = activity;
+        this.activity = new DoubleVec();
+        varActivityIncrement = 1.0;
+        varActivityDecay = 1.0 / activityDecayFactor;
         
         this.lastVarID = -1;
         this.sortedUnassigned = new IntVec();
@@ -26,6 +33,7 @@ public class SimpleVarOrder implements IVarOrder {
     public void newVar() {
         lastVarID += 1;
         sortedUnassigned.push(lastVarID);
+        activity.push(0);
     }
 
     @Override
@@ -86,5 +94,30 @@ public class SimpleVarOrder implements IVarOrder {
     @Override
     public void setAssigned(int var) {
         sortedUnassigned.remove(var);
+    }
+    
+    public void bumpVarActivity(Literal p) {
+        int x = p.var();
+        double oldActivity = activity.get(x);
+        double newActivity = oldActivity + varActivityIncrement;
+        activity.set(x, newActivity);
+        if(newActivity > 1e100)
+            rescaleVarActivity();
+        update(x);
+    }
+    
+    public void decayVarActivity() {
+        varActivityIncrement *= varActivityDecay;
+    }
+    
+    private void rescaleVarActivity() {
+        for(int i=0; i<numVars(); ++i) {
+            activity.set(i, activity.get(i) * 1e-100);
+        }
+        varActivityIncrement *= 1e-100;
+    }
+    
+    private int numVars() {
+        return lastVarID + 1;
     }
 }

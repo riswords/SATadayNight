@@ -3,20 +3,18 @@ package solver;
 import java.util.Optional;
 
 import collections.BoolVec;
-import collections.DoubleVec;
 import collections.IQueue;
 import collections.IVec;
 import collections.IntVec;
 import collections.Pair;
 import collections.SimpleQueue;
 import collections.SimpleVec;
+import exception.IllegalStateException;
 import solver.solverTypes.IConstraint;
 import solver.solverTypes.LBool;
 import solver.solverTypes.Literal;
 import solver.solverTypes.SearchParameters;
 import solver.solverTypes.SimpleClause;
-import solver.solverTypes.SimpleVarOrder;
-import exception.IllegalStateException;
 
 public class SimpleSolver implements ISolver {
 
@@ -42,10 +40,8 @@ public class SimpleSolver implements ISolver {
         model = new BoolVec();
 
         // variable order (after assigns is initialized)
-        activity = new DoubleVec();
-        varActivityIncrement = 1.0;
-        varActivityDecay = 0.95;
-        variableOrder = new SimpleVarOrder(assigns, activity);
+        double varActivityDecay = 0.95;
+        variableOrder = new SimpleVarOrder(assigns, varActivityDecay);
     }
 
     @Override
@@ -65,7 +61,6 @@ public class SimpleSolver implements ISolver {
         reason.growTo(newIndex, null);
         assigns.growTo(newIndex, LBool.UNDEFINED);
         level.growTo(newIndex, -1);
-        activity.growTo(newIndex, 0);
         return newIndex;
     }
 
@@ -264,7 +259,6 @@ public class SimpleSolver implements ISolver {
 
     private LBool search(int numConflicts, int numLearnts, SearchParameters params) {
         int conflictCount = 0;
-        varActivityDecay = 1.0 / params.getVarDecay();
         clauseActivityDecay = 1.0 / params.getClauseDecay();
         model.clear();
 
@@ -390,12 +384,8 @@ public class SimpleSolver implements ISolver {
     }
 
     private void decayActivities() {
-        decayVarActivity();
+        variableOrder.decayVarActivity();
         decayClauseActivity();
-    }
-
-    private void decayVarActivity() {
-        varActivityIncrement *= varActivityDecay;
     }
 
     private void decayClauseActivity() {
@@ -465,22 +455,9 @@ public class SimpleSolver implements ISolver {
     public IVec<IConstraint<SimpleSolver>> getWatches(int index) {
         return watches.get(index);
     }
-
+    
     public void bumpVarActivity(Literal p) {
-        int x = p.var();
-        double oldActivity = activity.get(x);
-        double newActivity = oldActivity + varActivityIncrement;
-        activity.set(x, newActivity);
-        if(newActivity > 1e100)
-            rescaleVarActivity();
-        variableOrder.update(x);
-    }
-
-    private void rescaleVarActivity() {
-        for(int i=0; i<numVars(); ++i) {
-            activity.set(i, activity.get(i) * 1e-100);
-        }
-        varActivityIncrement *= 1e-100;
+        variableOrder.bumpVarActivity(p);
     }
 
     public void bumpClauseActivity(SimpleClause clause) {
@@ -513,10 +490,7 @@ public class SimpleSolver implements ISolver {
     private double clauseActivityDecay; // decay factor for clause activity
 
     /* Variable Order */
-    private DoubleVec activity; // heuristic measure of the activity of a variable
-    private double varActivityIncrement; // variable activity increment
-    private double varActivityDecay; // decay factor for variable activity
-    private IVarOrder variableOrder; // keep track of dynamic variable order
+    private SimpleVarOrder variableOrder; // keep track of dynamic variable order
 
     /* Propagation */
     // For each literal p, a list of constraints watching p. A constraint will be inspected when p becomes true.
