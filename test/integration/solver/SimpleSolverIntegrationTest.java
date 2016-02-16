@@ -1,14 +1,41 @@
 package integration.solver;
 
-import org.junit.Test;
 import static org.junit.Assert.*;
+
+import org.junit.Test;
 
 import collections.BoolVec;
 import collections.SimpleVec;
+import main.dimacs.DIMACSParser;
 import solver.SimpleSolver;
 import solver.solverTypes.Literal;
 
 public class SimpleSolverIntegrationTest {
+    
+    /**
+     * Run SimpleSolver on simplesat_5_3.txt file.
+     */
+    @Test
+    public void testCaseSimpleSat_5_3() {
+        try {
+            SimpleSolver testSolver = new SimpleSolver();
+            DIMACSParser.parseDIMACS("test/problemSpecs/simplesat_5_3.txt", testSolver);
+            assertTrue(testSolver.solve());
+            
+            // this is the assignment that pops out now
+            // many others are acceptable
+            BoolVec expAssign1 = new BoolVec(5);
+            expAssign1.set(0, true); expAssign1.set(1, true); expAssign1.set(2, false);
+            expAssign1.set(3, true); expAssign1.set(4, true);
+            
+            assertTrue(verifyModel(testSolver.getModel(), expAssign1));
+        }
+        catch(Exception e) {
+            fail("Should not throw an exception.");
+            e.printStackTrace();
+        }
+    }
+   
 
     /**
      * Test Case 1:
