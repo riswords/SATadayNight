@@ -5,6 +5,7 @@ import collections.IVec;
 import collections.IntVec;
 import solver.solverTypes.LBool;
 import solver.solverTypes.Literal;
+import solver.IVarOrder;
 
 public class SimpleVarOrder implements IVarOrder {
 
@@ -19,8 +20,8 @@ public class SimpleVarOrder implements IVarOrder {
     private IntVec sortedUnassigned;
     private int lastVarID;
     
-    public SimpleVarOrder(IVec<LBool> assignments, double activityDecayFactor) {
-        this.assignments = assignments;
+    public SimpleVarOrder(AssignmentManager assignments, double activityDecayFactor) {
+        this.assignments = assignments.getAssignments();
         this.activity = new DoubleVec();
         varActivityIncrement = 1.0;
         varActivityDecay = 1.0 / activityDecayFactor;

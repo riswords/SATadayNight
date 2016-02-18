@@ -12,7 +12,7 @@ public class Main {
             SimpleSolver testSolver = new SimpleSolver();
             //DIMACSParser.parseDIMACS("test/problemSpecs/simpleunsat_3_8.txt", testSolver);
             //DIMACSParser.parseDIMACS("test/problemSpecs/simplesat_5_3.txt", testSolver);
-            DIMACSParser.parseDIMACS("test/problemSpecs/satrace15_708_2664_aes_32_3_keyfind_1.cnf", testSolver);
+            DIMACSParser.parseDIMACS("test/problemSpecs/satrace15_596_2780_aes_64_1_keyfind_1.cnf", testSolver);
             
             boolean result = testSolver.solve();
             if(result) {

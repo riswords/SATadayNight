@@ -5,7 +5,6 @@ import java.util.Optional;
 import collections.BoolVec;
 import collections.IQueue;
 import collections.IVec;
-import collections.IntVec;
 import collections.Pair;
 import collections.SimpleQueue;
 import collections.SimpleVec;
@@ -31,17 +30,13 @@ public class SimpleSolver implements ISolver {
         propagationQueue = new SimpleQueue<Literal>();
 
         // assignments
-        assigns = new SimpleVec<LBool>();
-        trail = new SimpleVec<Literal>();
-        trailLim = new IntVec();
-        reason = new SimpleVec<IConstraint<SimpleSolver>>();
-        level = new IntVec();
+        assignments = new AssignmentManager(this);
         rootLevel = -1;
         model = new BoolVec();
 
         // variable order (after assigns is initialized)
         double varActivityDecay = 0.95;
-        variableOrder = new SimpleVarOrder(assigns, varActivityDecay);
+        variableOrder = new SimpleVarOrder(assignments, varActivityDecay);
     }
 
     @Override
@@ -58,9 +53,6 @@ public class SimpleSolver implements ISolver {
             undos.push(new SimpleVec<IConstraint<SimpleSolver>>());
             variableOrder.newVar();
         }
-        reason.growTo(newIndex, null);
-        assigns.growTo(newIndex, LBool.UNDEFINED);
-        level.growTo(newIndex, -1);
         return newIndex;
     }
 
@@ -97,7 +89,7 @@ public class SimpleSolver implements ISolver {
      */
     @Override
     public boolean simplifyDB() {
-        if(decisionLevel() != 0)
+        if(assignments.decisionLevel() != 0)
             throw new IllegalStateException("Decision level must be 0 before simplifying the constraint database.");
         if(propagate().isPresent()) {
             return false;
@@ -161,12 +153,12 @@ public class SimpleSolver implements ISolver {
         // push incremental assumptions
         for(int i=0; i<assumptions.size(); ++i) {
             if(!assume(assumptions.get(i)) || propagate().isPresent()) {
-                cancelUntil(0);
+                assignments.cancelUntil(0);
                 return false;
             }
         }
 
-        rootLevel = decisionLevel();
+        rootLevel = assignments.decisionLevel();
 
         // solve
         while(status.equals(LBool.UNDEFINED)) {
@@ -175,12 +167,12 @@ public class SimpleSolver implements ISolver {
             numLearnts *= 1.1;
         }
 
-        cancelUntil(0);
+        assignments.cancelUntil(0);
         return status.equals(LBool.TRUE);
     }
 
     private boolean assume(Literal p) {
-        trailLim.push(trail.size());
+        assignments.assume(p);
         return enqueue(p);
     }
 
@@ -197,11 +189,8 @@ public class SimpleSolver implements ISolver {
             case UNDEFINED:
                 // enqueued a new fact, so store it
                 int varP = p.var();
-                assigns.set(varP, LBool.fromBoolean(!p.sign()));
+                assignments.assign(p, from);
                 variableOrder.setAssigned(varP);
-                level.set(varP, decisionLevel());
-                reason.set(varP, from);
-                trail.push(p);
                 propagationQueue.insert(p);
                 return true;
             default:
@@ -231,26 +220,9 @@ public class SimpleSolver implements ISolver {
         return Optional.empty();
     }
 
-    private void cancelUntil(int level) {
-        while(decisionLevel() > level)
-            cancel();
-    }
-
-    private void cancel() {
-        int c = trail.size() - trailLim.last();
-        for(; c > 0; c--)
-            undoOne();
-        trailLim.pop();
-    }
-
-    private void undoOne() {
-        Literal p = trail.last();
+    public void undoAssignment(Literal p) {
         int x = p.var();
-        assigns.set(x, LBool.UNDEFINED);
-        reason.set(x, null);
-        level.set(x, -1);
         variableOrder.undo(x);
-        trail.pop();
         while(undos.get(x).size() > 0) {
             undos.get(x).last().undo(this, p);
             undos.get(x).pop();
@@ -269,16 +241,16 @@ public class SimpleSolver implements ISolver {
                 conflictCount += 1;
                 IVec<Literal> learntClause = new SimpleVec<Literal>();
                 int backtrackLevel = -1;
-                if(decisionLevel() == rootLevel)
+                if(assignments.decisionLevel() == rootLevel)
                     return LBool.FALSE;
                 analyze(conflict.get(), learntClause);
-                cancelUntil(Math.max(backtrackLevel, rootLevel));
+                assignments.cancelUntil(Math.max(backtrackLevel, rootLevel));
                 record(learntClause);
                 decayActivities();
             }
             else {
                 // no conflict
-                if(decisionLevel() == 0) {
+                if(assignments.decisionLevel() == 0) {
                     // simplify the set of problem clauses
                     boolean result = simplifyDB();
                     if(!result)
@@ -295,12 +267,12 @@ public class SimpleSolver implements ISolver {
                     model.growTo(numVars);
                     for(int i=0; i<numVars; ++i)
                         model.set(i, value(i) == LBool.TRUE);
-                    cancelUntil(rootLevel);
+                    assignments.cancelUntil(rootLevel);
                     return LBool.TRUE;
                 }
                 else if(conflictCount >= numConflicts) {
                     // reached bound on number of conflicts, so force a restart
-                    cancelUntil(rootLevel);
+                    assignments.cancelUntil(rootLevel);
                     return LBool.UNDEFINED;
                 }
                 else {
@@ -325,49 +297,11 @@ public class SimpleSolver implements ISolver {
      *      will undo part of the trail, but not beyond the last decision level
      */
     private int analyze(IConstraint<SimpleSolver> conflict, IVec<Literal> outLearnt) {
-        assert (outLearnt.size() == 0) :
-            "Pre-condition failure in analyze: outLearnt input should be cleared.";
-        assert (decisionLevel() > rootLevel) :
-            "Pre-condition failure in analyze: current decision level must be greater than root level.";
+        if(TEMP_I % 16000 == 0)
+            System.out.println(TEMP_I);
+        TEMP_I += 1;
         
-        BoolVec seen = new BoolVec(numVars(), false);
-        int counter = 0;
-        Literal p = Literal.UNDEFINED_LITERAL;
-
-        IVec<Literal> reasonForP = new SimpleVec<Literal>();
-        outLearnt.push(null);
-        int outBacktrackLevel = 0;
-        do {
-            reasonForP.clear();
-            assert (conflict != null) :
-                "Invariant failure: conflict should not be null. See Solver.analyze().";
-            conflict.calcReason(this, p, reasonForP);
-            
-            // trace reason for p
-            for(int i = 0; i<reasonForP.size(); ++i) {
-                Literal q = reasonForP.get(i);
-                int qVar = q.var();
-                if(!seen.get(qVar)) {
-                    seen.set(qVar, true);
-                    if(level.get(qVar) == decisionLevel())
-                        counter += 1;
-                    else if(level.get(qVar) > 0) {
-                        outLearnt.push(q.negated());
-                        outBacktrackLevel = Math.max(outBacktrackLevel, level.get(qVar));
-                    }
-                }
-
-                // select next literal to look at
-                do {
-                    p = trail.last();
-                    conflict = reason.get(p.var());
-                    undoOne();
-                } while(!seen.get(p.var()));
-                counter -= 1;
-            }
-        } while(counter > 0);
-        outLearnt.set(0, p.negated());
-        return outBacktrackLevel;
+        return assignments.analyze(conflict, outLearnt, rootLevel);
     }
 
     private void record(IVec<Literal> clauseVec) {
@@ -423,33 +357,29 @@ public class SimpleSolver implements ISolver {
     @Override
     public BoolVec getModel() { return model; }
     
-    private int decisionLevel() { return trailLim.size(); }
-    
-    private int numVars() { return assigns.size(); }
+    private int numVars() { return assignments.numVars(); }
 
-    private int numAssigns() { return trail.size(); }
+    private int numAssigns() { return assignments.numAssigns(); }
 
     private int numConstraints() { return constraints.size(); }
     
     private LBool value(int varID) {
-        return assigns.get(varID);
+        return assignments.value(varID);
     }
     
     public LBool value(Literal p) {
-        return p.sign()
-                ? assigns.get(p.var()).negate()
-                : assigns.get(p.var());
+        return assignments.value(p);
     }
 
     public int getLiteralDecisionLevel(Literal p) {
-        return level.get(p.var());
+        return assignments.getDecisionLevel(p);
     }
 
     /**
      * Return the constraint which implied the value for variable {@code index}.
      */
     public IConstraint<SimpleSolver> getReason(int index) {
-        return reason.get(index);
+        return assignments.getReason(index);
     }
 
     public IVec<IConstraint<SimpleSolver>> getWatches(int index) {
@@ -501,12 +431,9 @@ public class SimpleSolver implements ISolver {
     private IQueue<Literal> propagationQueue; // propagation queue
 
     /* Assignments */
-    private IVec<LBool> assigns; // current assignment indexed on variables
-    private IVec<Literal> trail; // list of assignments in chronological order
-    private IntVec trailLim; // separator indices for different decision levels in a trail
-    private IVec<IConstraint<SimpleSolver>> reason; // for each variable, the constraint that implied its value
-    private IntVec level; // for each variable, the decision level at which it was assigned
+    private AssignmentManager assignments;
     private int rootLevel; // separates incremental and search assumptions
-
+    
     private BoolVec model; // store the final model
+    private int TEMP_I = 0;
 }
