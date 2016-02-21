@@ -368,7 +368,7 @@ public class SimpleSolver implements ISolver {
                     p = trail.last();
                     conflict = reason.get(p.var());
                     undoOne();
-                } while(!seen.get(p.var()));
+                } while(!seen.get(p.var()) && trail.size() > 0);
                 counter -= 1;
             }
         } while(counter > 0);
