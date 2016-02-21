@@ -2,7 +2,7 @@ package collections;
 
 import java.util.Comparator;
 
-public interface IVec<T> {
+public interface Vec<T> {
     /**
      * Return the number of elements in the vector.
      */
@@ -57,13 +57,13 @@ public interface IVec<T> {
      * Copy contents of this vector (and relevant underlying variables) to {@code copy}.
      * May throw an {@code UnsupportedOperationException} if the copy destination is not of the same type.
      */
-    public void copyTo(IVec<T> copy);
+    public void copyTo(Vec<T> copy);
 
     /**
      * Move the contents of this vector to the destination {@code dest}. 
      * Per paper, should complete in constant time and also clear out the contents of the source vector.
      */
-    public void moveTo(IVec<T> dest);
+    public void moveTo(Vec<T> dest);
 
     /**
      * Remove the first occurrence of element {@code element} from the vector and return {@code true}. 

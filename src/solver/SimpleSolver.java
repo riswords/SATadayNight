@@ -4,13 +4,13 @@ import java.util.Optional;
 
 import collections.BoolVec;
 import collections.DoubleVec;
-import collections.IQueue;
-import collections.IVec;
+import collections.Queue;
+import collections.Vec;
 import collections.IntVec;
 import collections.Pair;
 import collections.SimpleQueue;
 import collections.SimpleVec;
-import solver.solverTypes.IConstraint;
+import solver.solverTypes.Constraint;
 import solver.solverTypes.LBool;
 import solver.solverTypes.Literal;
 import solver.solverTypes.SearchParameters;
@@ -18,25 +18,25 @@ import solver.solverTypes.SimpleClause;
 import solver.solverTypes.SimpleVarOrder;
 import exception.IllegalStateException;
 
-public class SimpleSolver implements ISolver {
+public class SimpleSolver implements Solver {
 
     public SimpleSolver() {
         // constraint management
-        constraints = new SimpleVec<IConstraint<SimpleSolver>>();
+        constraints = new SimpleVec<Constraint<SimpleSolver>>();
         learnts = new SimpleVec<SimpleClause>();
         clauseActivityIncrement = 1.0;
         clauseActivityDecay = 0.999;
 
         // propagation
-        watches = new SimpleVec<IVec<IConstraint<SimpleSolver>>>();
-        undos = new SimpleVec<IVec<IConstraint<SimpleSolver>>>();
+        watches = new SimpleVec<Vec<Constraint<SimpleSolver>>>();
+        undos = new SimpleVec<Vec<Constraint<SimpleSolver>>>();
         propagationQueue = new SimpleQueue<Literal>();
 
         // assignments
         assigns = new SimpleVec<LBool>();
         trail = new SimpleVec<Literal>();
         trailLim = new IntVec();
-        reason = new SimpleVec<IConstraint<SimpleSolver>>();
+        reason = new SimpleVec<Constraint<SimpleSolver>>();
         level = new IntVec();
         rootLevel = -1;
         model = new BoolVec();
@@ -57,9 +57,9 @@ public class SimpleSolver implements ISolver {
     public int newVariable(int newVars) {
         int newIndex = numVars() + newVars;
         for(int i=0; i<newVars; ++i) {
-            watches.push(new SimpleVec<IConstraint<SimpleSolver>>());
-            watches.push(new SimpleVec<IConstraint<SimpleSolver>>());
-            undos.push(new SimpleVec<IConstraint<SimpleSolver>>());
+            watches.push(new SimpleVec<Constraint<SimpleSolver>>());
+            watches.push(new SimpleVec<Constraint<SimpleSolver>>());
+            undos.push(new SimpleVec<Constraint<SimpleSolver>>());
             variableOrder.newVar();
         }
         reason.growTo(newIndex, null);
@@ -73,7 +73,7 @@ public class SimpleSolver implements ISolver {
      * Used for adding a new problem clause to the solver.
      */
     @Override
-    public boolean addClause(IVec<Literal> literals) {
+    public boolean addClause(Vec<Literal> literals) {
         Pair<Boolean, SimpleClause> newClauseResult = SimpleClause.clauseNew(this, literals, false);
         if(!newClauseResult.getFirst()) {
             // clause creation failed: either this is an empty clause, or it's a unit clause that conflicts 
@@ -119,7 +119,7 @@ public class SimpleSolver implements ISolver {
      * covariance (right now learnts have type IVec<SimpleClause> while problem constraints are 
      * IVec<IConstraint<SimpleSolver>>). 
      */
-    private void simplifyConstraints(IVec<IConstraint<SimpleSolver>> constraints) {
+    private void simplifyConstraints(Vec<Constraint<SimpleSolver>> constraints) {
         int j = 0;
         for(int i=0; i<constraints.size(); ++i) {
             if(constraints.get(i).simplify(this))
@@ -138,7 +138,7 @@ public class SimpleSolver implements ISolver {
      * covariance (right now learnts have type IVec<SimpleClause> while problem constraints are 
      * IVec<IConstraint<SimpleSolver>>). 
      */
-    private void simplifyLearntClauses(IVec<SimpleClause> learntClauses) {
+    private void simplifyLearntClauses(Vec<SimpleClause> learntClauses) {
         int j = 0;
         for(int i=0; i<learntClauses.size(); ++i) {
             if(learntClauses.get(i).simplify(this))
@@ -157,7 +157,7 @@ public class SimpleSolver implements ISolver {
     }
 
     @Override
-    public boolean solve(IVec<Literal> assumptions) {
+    public boolean solve(Vec<Literal> assumptions) {
         SearchParameters params = new SearchParameters(0.95, 0.999);
         double numConflicts = 100;
         double numLearnts = numConstraints() / 3.0;
@@ -191,7 +191,7 @@ public class SimpleSolver implements ISolver {
 
     public boolean enqueue(Literal p) { return enqueue(p, null); }
 
-    public boolean enqueue(Literal p, IConstraint<SimpleSolver> from) {
+    public boolean enqueue(Literal p, Constraint<SimpleSolver> from) {
         switch(value(p)) {
             case FALSE:
                 // enqueued a conflicting assignment
@@ -216,10 +216,10 @@ public class SimpleSolver implements ISolver {
         }
     }
 
-    private Optional<IConstraint<SimpleSolver>> propagate() {
+    private Optional<Constraint<SimpleSolver>> propagate() {
         while(propagationQueue.size() > 0) {
             Literal p = propagationQueue.dequeue();
-            IVec<IConstraint<SimpleSolver>> temp = new SimpleVec<IConstraint<SimpleSolver>>();
+            Vec<Constraint<SimpleSolver>> temp = new SimpleVec<Constraint<SimpleSolver>>();
             watches.get(p.index()).moveTo(temp);
 
             for(int i=0; i<temp.size(); ++i) {
@@ -269,11 +269,11 @@ public class SimpleSolver implements ISolver {
         model.clear();
 
         while(true) {
-            Optional<IConstraint<SimpleSolver>> conflict = propagate();
+            Optional<Constraint<SimpleSolver>> conflict = propagate();
             if(conflict.isPresent()) {
                 // conflict
                 conflictCount += 1;
-                IVec<Literal> learntClause = new SimpleVec<Literal>();
+                Vec<Literal> learntClause = new SimpleVec<Literal>();
                 int backtrackLevel = -1;
                 if(decisionLevel() == rootLevel)
                     return LBool.FALSE;
@@ -330,7 +330,7 @@ public class SimpleSolver implements ISolver {
      * Side effect:
      *      will undo part of the trail, but not beyond the last decision level
      */
-    private int analyze(IConstraint<SimpleSolver> conflict, IVec<Literal> outLearnt) {
+    private int analyze(Constraint<SimpleSolver> conflict, Vec<Literal> outLearnt) {
         assert (outLearnt.size() == 0) :
             "Pre-condition failure in analyze: outLearnt input should be cleared.";
         assert (decisionLevel() > rootLevel) :
@@ -340,7 +340,7 @@ public class SimpleSolver implements ISolver {
         int counter = 0;
         Literal p = Literal.UNDEFINED_LITERAL;
 
-        IVec<Literal> reasonForP = new SimpleVec<Literal>();
+        Vec<Literal> reasonForP = new SimpleVec<Literal>();
         outLearnt.push(null);
         int outBacktrackLevel = 0;
         do {
@@ -376,7 +376,7 @@ public class SimpleSolver implements ISolver {
         return outBacktrackLevel;
     }
 
-    private void record(IVec<Literal> clauseVec) {
+    private void record(Vec<Literal> clauseVec) {
         Literal p = clauseVec.get(0);   // saving so we have this after clauseVec gets cleared
         Pair<Boolean, SimpleClause> newClauseResult = SimpleClause.clauseNew(this, clauseVec, true);
         assert (newClauseResult.getFirst()) :
@@ -458,11 +458,11 @@ public class SimpleSolver implements ISolver {
     /**
      * Return the constraint which implied the value for variable {@code index}.
      */
-    public IConstraint<SimpleSolver> getReason(int index) {
+    public Constraint<SimpleSolver> getReason(int index) {
         return reason.get(index);
     }
 
-    public IVec<IConstraint<SimpleSolver>> getWatches(int index) {
+    public Vec<Constraint<SimpleSolver>> getWatches(int index) {
         return watches.get(index);
     }
 
@@ -500,15 +500,15 @@ public class SimpleSolver implements ISolver {
         clauseActivityIncrement *= 1e-100;
     }
 
-    private void sortByActivity(IVec<SimpleClause> clauses) {
+    private void sortByActivity(Vec<SimpleClause> clauses) {
         clauses.sort((SimpleClause c1, SimpleClause c2) -> {
             return Double.compare(c2.getActivity(), c1.getActivity());
         });
     }
 
     /* Constraint management */
-    private IVec<IConstraint<SimpleSolver>> constraints; // list of constraints
-    private IVec<SimpleClause> learnts; // learnt clauses
+    private Vec<Constraint<SimpleSolver>> constraints; // list of constraints
+    private Vec<SimpleClause> learnts; // learnt clauses
     private double clauseActivityIncrement; // clause activity increment
     private double clauseActivityDecay; // decay factor for clause activity
 
@@ -516,21 +516,21 @@ public class SimpleSolver implements ISolver {
     private DoubleVec activity; // heuristic measure of the activity of a variable
     private double varActivityIncrement; // variable activity increment
     private double varActivityDecay; // decay factor for variable activity
-    private IVarOrder variableOrder; // keep track of dynamic variable order
+    private VariableOrder variableOrder; // keep track of dynamic variable order
 
     /* Propagation */
     // For each literal p, a list of constraints watching p. A constraint will be inspected when p becomes true.
-    private IVec<IVec<IConstraint<SimpleSolver>>> watches;
+    private Vec<Vec<Constraint<SimpleSolver>>> watches;
 
     // For each variable x, a list of constraints that need to update when x becomes unbound by backtracking
-    private IVec<IVec<IConstraint<SimpleSolver>>> undos;
-    private IQueue<Literal> propagationQueue; // propagation queue
+    private Vec<Vec<Constraint<SimpleSolver>>> undos;
+    private Queue<Literal> propagationQueue; // propagation queue
 
     /* Assignments */
-    private IVec<LBool> assigns; // current assignment indexed on variables
-    private IVec<Literal> trail; // list of assignments in chronological order
+    private Vec<LBool> assigns; // current assignment indexed on variables
+    private Vec<Literal> trail; // list of assignments in chronological order
     private IntVec trailLim; // separator indices for different decision levels in a trail
-    private IVec<IConstraint<SimpleSolver>> reason; // for each variable, the constraint that implied its value
+    private Vec<Constraint<SimpleSolver>> reason; // for each variable, the constraint that implied its value
     private IntVec level; // for each variable, the decision level at which it was assigned
     private int rootLevel; // separates incremental and search assumptions
 

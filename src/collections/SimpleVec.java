@@ -7,7 +7,7 @@ import collections.exception.IndexOutOfBoundsException;
 import collections.exception.UnderflowException;
 import exception.IllegalArgumentException;
 
-public class SimpleVec<T> implements IVec<T> {
+public class SimpleVec<T> implements Vec<T> {
 
     private T[] vec;
     private int numElements = 0;
@@ -108,7 +108,7 @@ public class SimpleVec<T> implements IVec<T> {
     }
 
     @Override
-    public void copyTo(IVec<T> copy) {
+    public void copyTo(Vec<T> copy) {
         if(copy instanceof SimpleVec) {
             SimpleVec<T> castCopy = (SimpleVec<T>)copy;
             castCopy.ensureCapacity(numElements);
@@ -121,7 +121,7 @@ public class SimpleVec<T> implements IVec<T> {
     }
 
     @Override
-    public void moveTo(IVec<T> dest) {
+    public void moveTo(Vec<T> dest) {
         copyTo(dest);
         clear();
     }

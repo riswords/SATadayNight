@@ -2,7 +2,7 @@ package solver;
 
 import solver.solverTypes.Literal;
 
-public interface IVarOrder {
+public interface VariableOrder {
 
     /**
      * Called when a new variable is created.

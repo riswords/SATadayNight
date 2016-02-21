@@ -1,20 +1,20 @@
 package solver.solverTypes;
 
 import collections.DoubleVec;
-import collections.IVec;
+import collections.Vec;
 import collections.IntVec;
-import solver.IVarOrder;
+import solver.VariableOrder;
 
-public class SimpleVarOrder implements IVarOrder {
+public class SimpleVarOrder implements VariableOrder {
 
-    private IVec<LBool> assignments;
+    private Vec<LBool> assignments;
     private DoubleVec activity;
     
     // list of unassigned variables in ascending order of activity
     private IntVec sortedUnassigned;
     private int lastVarID;
     
-    public SimpleVarOrder(IVec<LBool> assignments, DoubleVec activity) {
+    public SimpleVarOrder(Vec<LBool> assignments, DoubleVec activity) {
         this.assignments = assignments;
         this.activity = activity;
         

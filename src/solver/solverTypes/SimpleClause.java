@@ -1,21 +1,21 @@
 package solver.solverTypes;
 
-import collections.IVec;
+import collections.Vec;
 import collections.Pair;
 import collections.SimpleVec;
 import exception.UncheckedInvariantException;
 import solver.SimpleSolver;
 
-public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<SimpleClause> {
+public class SimpleClause implements Constraint<SimpleSolver>, Comparable<SimpleClause> {
 
     private boolean isLearnt;
     private double activity;
-    private IVec<Literal> literals;
+    private Vec<Literal> literals;
 
     /**
      * Use clauseNew to construct clauses
      */
-    private SimpleClause(IVec<Literal> lits, boolean learnt) {
+    private SimpleClause(Vec<Literal> lits, boolean learnt) {
         this.literals = lits;
         this.isLearnt = learnt;
         this.activity = 0.0;
@@ -87,7 +87,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
     }
 
     @Override
-    public void calcReason(SimpleSolver solver, Literal p, IVec<Literal> outReason) {
+    public void calcReason(SimpleSolver solver, Literal p, Vec<Literal> outReason) {
         // invariant: p == LIT_UNDEFINED or p == literals[0]
         if(! (p.equals(Literal.UNDEFINED_LITERAL) || p.equals(literals.get(0))))
             throw new UncheckedInvariantException("Invariant failure: p should either be undefined or the first " +
@@ -125,7 +125,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
      *      during backtracking (i.e., the one with the highest decision level).
      * For top-level/user-defined constraints, just pick the first two literals to watch
      */
-    public static Pair<Boolean, SimpleClause> clauseNew(SimpleSolver solver, IVec<Literal> ps, boolean learnt) {
+    public static Pair<Boolean, SimpleClause> clauseNew(SimpleSolver solver, Vec<Literal> ps, boolean learnt) {
         // normalize clause
         if(!learnt) {
             if(clauseAlreadySatisfied(solver, ps)
@@ -145,7 +145,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
                     : new Pair<Boolean, SimpleClause>(false, null);
         }
         else {
-            IVec<Literal> copyPs = new SimpleVec<Literal>();
+            Vec<Literal> copyPs = new SimpleVec<Literal>();
             ps.moveTo(copyPs);
             SimpleClause newClause = new SimpleClause(copyPs, learnt);
 
@@ -172,7 +172,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
     /**
      * Check whether the solver already has an assignment that satisfies this clause.
      */
-    private static boolean clauseAlreadySatisfied(SimpleSolver solver, IVec<Literal> ps) {
+    private static boolean clauseAlreadySatisfied(SimpleSolver solver, Vec<Literal> ps) {
         for(int i=0; i<ps.size(); ++i) {
             Literal p = ps.get(i);
             if(solver.value(p) == LBool.TRUE)
@@ -184,7 +184,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
     /**
      * Check a vector of Literals for positive and negative occurrences of the same literal.
      */
-    private static boolean clauseHasNegAndPosLiteralOccurrence(IVec<Literal> ps) {
+    private static boolean clauseHasNegAndPosLiteralOccurrence(Vec<Literal> ps) {
         for(int i=0; i<ps.size(); ++i) {
             Literal iLitNegated = ps.get(i).negated();
             for(int j=i+1; j<ps.size(); ++j) {
@@ -199,7 +199,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
     /**
      * Remove from the vector all Literals which are already assigned a value of false in the solver.
      */
-    private static void removeAllFalseLiterals(SimpleSolver solver, IVec<Literal> ps) {
+    private static void removeAllFalseLiterals(SimpleSolver solver, Vec<Literal> ps) {
         for(int i=0; i<ps.size(); ++i) {
             Literal p = ps.get(i);
             if(solver.value(p) == LBool.FALSE) {
@@ -212,7 +212,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
     /**
      * Remove Literals that occur more than once (with the same sign) from the vector.
      */
-    private static void removeDuplicateLiterals(IVec<Literal> ps) {
+    private static void removeDuplicateLiterals(Vec<Literal> ps) {
         for(int i=0; i<ps.size(); ++i) {
             Literal iLiteral = ps.get(i);
             for(int j=i+1; j<ps.size(); ++j) {
@@ -225,7 +225,7 @@ public class SimpleClause implements IConstraint<SimpleSolver>, Comparable<Simpl
         }
     }
 
-    private static int findLiteralWithMaxDecisionLevel(SimpleSolver solver, IVec<Literal> ps) {
+    private static int findLiteralWithMaxDecisionLevel(SimpleSolver solver, Vec<Literal> ps) {
         int indexOfMaxLevel = 0;
         int maxDecisionLevel = -1;
         for(int i=0; i<ps.size(); ++i) {

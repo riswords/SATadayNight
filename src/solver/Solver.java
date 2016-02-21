@@ -1,10 +1,10 @@
 package solver;
 
 import collections.BoolVec;
-import collections.IVec;
+import collections.Vec;
 import solver.solverTypes.Literal;
 
-public interface ISolver {
+public interface Solver {
 
     /**
      * Introduce a new variable. Returns the ID of the new variable.
@@ -20,7 +20,7 @@ public interface ISolver {
      * Introduce new clauses. May detect some conflicts and return false. If this happens, the 
      * solver may be left in an undefined state and shouldn't be used further.
      */
-    public boolean addClause(IVec<Literal> literals);
+    public boolean addClause(Vec<Literal> literals);
 
     /**
      * May be called before solve() to simplify the problem constraints
@@ -41,7 +41,7 @@ public interface ISolver {
      * An alternative interface might distinguish between unsatisfiable and unsatisfiable under 
      * the assumptions.
      */
-    public boolean solve(IVec<Literal> assumptions);
+    public boolean solve(Vec<Literal> assumptions);
 
     /**
      * Convenience method to call solve() with no assumptions.

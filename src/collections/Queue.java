@@ -1,6 +1,6 @@
 package collections;
 
-public interface IQueue<T> {
+public interface Queue<T> {
 
     public void insert(T t);
 

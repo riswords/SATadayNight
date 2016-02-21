@@ -5,14 +5,14 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.Scanner;
 
-import collections.IVec;
+import collections.Vec;
 import collections.SimpleVec;
-import solver.ISolver;
+import solver.Solver;
 import solver.solverTypes.Literal;
 
 public class DIMACSParser {
 
-    public static void parseDIMACS(String fileName, ISolver solver) throws DIMACSException {
+    public static void parseDIMACS(String fileName, Solver solver) throws DIMACSException {
         try {
             Scanner scanner = new Scanner(new BufferedReader(new FileReader(fileName)));
             scanner.useDelimiter("\\s+");
@@ -41,7 +41,7 @@ public class DIMACSParser {
         }
     }
     
-    private static int parseProblemLine(String line, ISolver solver) throws DIMACSException {
+    private static int parseProblemLine(String line, Solver solver) throws DIMACSException {
         String[] splitLine = line.split("\\s+");
         try {
             int numVars = Integer.parseInt(splitLine[2]);
@@ -57,9 +57,9 @@ public class DIMACSParser {
         }
     }
     
-    private static void parseClauseLine(String line, ISolver solver) throws DIMACSException {
+    private static void parseClauseLine(String line, Solver solver) throws DIMACSException {
         String[] literals = line.split("\\s+");
-        IVec<Literal> clause = new SimpleVec<Literal>();
+        Vec<Literal> clause = new SimpleVec<Literal>();
         for(String litString : literals) {
             try {
                 int litInt = Integer.parseInt(litString);

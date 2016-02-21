@@ -16,7 +16,7 @@ import collections.exception.UnderflowException;
  * implementation where either the queue is recreated as a new vector containing only the existing elements, or 
  * use a vector that supports shrinking the capacity.
  */
-public class SimpleQueue<T> implements IQueue<T> {
+public class SimpleQueue<T> implements Queue<T> {
 
     private SimpleVec<T> queue = new SimpleVec<T>();
     private int endIndex = 0;

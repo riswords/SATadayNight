@@ -1,9 +1,9 @@
 package solver.solverTypes;
 
-import collections.IVec;
-import solver.ISolver;
+import collections.Vec;
+import solver.Solver;
 
-public interface IConstraint<S extends ISolver> {
+public interface Constraint<S extends Solver> {
 
     /**
      * Remove this from the watcher lists and ensure that it can be disposed.
@@ -47,5 +47,5 @@ public interface IConstraint<S extends ISolver> {
      * literal p is also allowed to be the special UNDEFINED_LIT in which case the reason for the 
      * clause being conflicting should be returned through the vector.
      */
-    public void calcReason(S solver, Literal p, IVec<Literal> outReason);
+    public void calcReason(S solver, Literal p, Vec<Literal> outReason);
 }
